@@ -40,12 +40,16 @@ import java.util.logging.Logger;
  */
 @Service(priority = 3)
 public final class DataService {
-    @Getter public static final DataService instance = new DataService();
+    @Getter
+    public static final DataService instance = new DataService();
 
-    @Inject private Fadah plugin;
-    @Inject public Logger logger;
+    @Inject
+    private Fadah plugin;
+    @Inject
+    public Logger logger;
 
-    @Getter private final ExecutorService threadPool;
+    @Getter
+    private final ExecutorService threadPool;
     private final Map<DatabaseType, Class<? extends DatabaseHandler>> databaseHandlers = new HashMap<>();
     private DatabaseHandler handler;
 
@@ -62,8 +66,8 @@ public final class DataService {
         handler = initHandler();
         handler.connect();
 
-        getAll(Listing.class).thenAccept(listings ->
-                listings.forEach(listing -> CacheAccess.add(Listing.class, listing))).join();
+        getAll(Listing.class)
+                .thenAccept(listings -> listings.forEach(listing -> CacheAccess.add(Listing.class, listing))).join();
 
         Broker.getInstance().load();
 
@@ -71,8 +75,7 @@ public final class DataService {
                 listingExpiryTask(),
                 0L,
                 1L,
-                TimeUnit.SECONDS
-        );
+                TimeUnit.SECONDS);
     }
 
     public <T> CompletableFuture<List<T>> getAll(Class<T> clazz) {
@@ -136,15 +139,15 @@ public final class DataService {
     }
 
     public CompletableFuture<Void> loadPlayerData(UUID uuid) {
-        if (CacheAccess.get(History.class, uuid).isPresent()) return CompletableFuture.completedFuture(null);
+        if (CacheAccess.get(History.class, uuid).isPresent())
+            return CompletableFuture.completedFuture(null);
         return fixPlayerData(uuid)
                 .thenCompose(ignored -> CompletableFuture.allOf(
                         loadAndCache(CollectionBox.class, uuid, () -> ImplCollectionBox.empty(uuid)),
                         loadAndCache(ExpiredItems.class, uuid, () -> ImplExpiredItems.empty(uuid)),
                         loadAndCache(History.class, uuid, () -> ImplHistory.empty(uuid)),
                         get(Watching.class, uuid)
-                                .thenAccept(opt -> opt.ifPresent(AuctionWatcher::watch))
-                ));
+                                .thenAccept(opt -> opt.ifPresent(AuctionWatcher::watch))));
     }
 
     public CompletableFuture<Void> invalidateAndSavePlayerData(UUID uuid) {
@@ -154,8 +157,7 @@ public final class DataService {
                 saveAndInvalidate(History.class, uuid),
                 AuctionWatcher.get(uuid)
                         .map(w -> save(Watching.class, w))
-                        .orElseGet(() -> CompletableFuture.completedFuture(null))
-        );
+                        .orElseGet(() -> CompletableFuture.completedFuture(null)));
     }
 
     private <T> CompletableFuture<Void> loadAndCache(Class<T> type, UUID uuid, Supplier<T> supplier) {
@@ -179,13 +181,15 @@ public final class DataService {
         try {
             threadPool.shutdown();
             boolean success = threadPool.awaitTermination(10, TimeUnit.SECONDS);
-            if (!success) throw new RuntimeException("Failed to shutdown thread pool");
+            if (!success)
+                throw new RuntimeException("Failed to shutdown thread pool");
             handler.destroy();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
-        if (Config.i().getBroker().isEnabled()) Broker.getInstance().destroy();
+        if (Config.i().getBroker().isEnabled())
+            Broker.getInstance().destroy();
     }
 
     private DatabaseHandler initHandler() {
@@ -194,7 +198,8 @@ public final class DataService {
         try {
             Class<? extends DatabaseHandler> handlerClass = databaseHandlers.get(type);
             if (handlerClass == null) {
-                throw new IllegalStateException("No handler for database type %s registered!".formatted(type.getFriendlyName()));
+                throw new IllegalStateException(
+                        "No handler for database type %s registered!".formatted(type.getFriendlyName()));
             }
             return handlerClass.getDeclaredConstructor(Fadah.class).newInstance(plugin);
         } catch (Exception e) {
@@ -204,14 +209,23 @@ public final class DataService {
 
     private Runnable listingExpiryTask() {
         return () -> {
-            for (Listing listing : CacheAccess.getAll(Listing.class)) {
-                if (System.currentTimeMillis() <= listing.getDeletionDate()) continue;
+            try {
+                for (Listing listing : CacheAccess.getAll(Listing.class)) {
+                    try {
+                        if (System.currentTimeMillis() <= listing.getDeletionDate())
+                            continue;
 
-                if (listing instanceof BidListing bidListing) {
-                    bidListing.completeBidding();
-                } else {
-                    listing.expire();
+                        if (listing instanceof BidListing bidListing) {
+                            bidListing.completeBidding();
+                        } else {
+                            listing.expire();
+                        }
+                    } catch (Exception e) {
+                        logger.log(java.util.logging.Level.SEVERE, "Failed to expire listing: " + listing.getId(), e);
+                    }
                 }
+            } catch (Exception e) {
+                logger.log(java.util.logging.Level.SEVERE, "Error in listing expiry task", e);
             }
         };
     }

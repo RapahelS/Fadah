@@ -59,6 +59,8 @@ dependencies {
 tasks.withType<ShadowJar> {
     relocate("info.preva1l.hooker", "info.preva1l.fadah.hooks.lib")
     relocate("info.preva1l.trashcan", "info.preva1l.fadah.trashcan")
+    relocate("io.netty", "info.preva1l.fadah.libs.io.netty")
+    relocate("org.redisson", "info.preva1l.fadah.libs.org.redisson")
 }
 
 paper {
