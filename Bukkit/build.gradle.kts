@@ -30,7 +30,7 @@ dependencies {
     trashcan()
 
     library(libs.bundles.databases)
-    library(libs.redisson)
+    implementation(libs.redisson)
 
     library(libs.multilib)
     library(libs.anvilgui) { setRemapped(true) }

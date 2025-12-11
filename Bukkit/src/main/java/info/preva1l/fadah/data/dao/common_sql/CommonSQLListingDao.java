@@ -36,12 +36,14 @@ import java.util.stream.Collectors;
 public abstract class CommonSQLListingDao implements Dao<Listing> {
     private final HikariDataSource dataSource;
     protected static final Gson GSON = new GsonBuilder().serializeNulls().disableHtmlEscaping().create();
-    protected static final Type BIDS_TYPE = new TypeToken<ConcurrentSkipListSet<Bid>>(){}.getType();
+    protected static final Type BIDS_TYPE = new TypeToken<ConcurrentSkipListSet<Bid>>() {
+    }.getType();
 
     /**
      * Converts a set of bids to its JSON string representation.
      *
-     * @param bids a thread-safe sorted set of bid records to be serialized into JSON.
+     * @param bids a thread-safe sorted set of bid records to be serialized into
+     *             JSON.
      * @return a JSON string representing the input set of bids.
      */
     public static String bidToJsonString(ConcurrentSkipListSet<Bid> bids) {
@@ -52,24 +54,25 @@ public abstract class CommonSQLListingDao implements Dao<Listing> {
      * Get a listing from the database by its id.
      *
      * @param id the id of the listing to get.
-     * @return an optional containing the listing if it exists, or an empty optional if it does not.
+     * @return an optional containing the listing if it exists, or an empty optional
+     *         if it does not.
      */
     @Override
     public Optional<Listing> get(UUID id) {
         try (Connection connection = getConnection()) {
             try (PreparedStatement statement = connection.prepareStatement("""
-                        SELECT  `ownerUUID`, `ownerName`, `category`,
-                                `creationDate`, `deletionDate`, `price`, 
-                                `tax`, `itemStack`, `biddable`, `bids`
-                        FROM `listings`
-                        WHERE `uuid`=?;""")) {
+                    SELECT  `ownerUUID`, `ownerName`, `category`,
+                            `creationDate`, `deletionDate`, `price`,
+                            `tax`, `itemStack`, `biddable`, `bids`
+                    FROM `listings`
+                    WHERE `uuid`=?;""")) {
                 statement.setString(1, id.toString());
                 ResultSet resultSet = statement.executeQuery();
                 if (resultSet.next()) {
                     return Optional.of(createListing(id, resultSet));
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Failed to get listing!", e);
         }
         return Optional.empty();
@@ -85,14 +88,18 @@ public abstract class CommonSQLListingDao implements Dao<Listing> {
         final List<Listing> retrievedData = Lists.newArrayList();
         try (Connection connection = getConnection()) {
             try (PreparedStatement statement = connection.prepareStatement("""
-                        SELECT  `uuid`, `ownerUUID`, `ownerName`, `category`,
-                                `creationDate`, `deletionDate`, `price`, `tax`,
-                                `itemStack`, `biddable`, `bids`
-                        FROM `listings`;""")) {
+                    SELECT  `uuid`, `ownerUUID`, `ownerName`, `category`,
+                            `creationDate`, `deletionDate`, `price`, `tax`,
+                            `itemStack`, `biddable`, `bids`
+                    FROM `listings`;""")) {
                 final ResultSet resultSet = statement.executeQuery();
                 while (resultSet.next()) {
-                    final UUID id = UUID.fromString(resultSet.getString("uuid"));
-                    retrievedData.add(createListing(id, resultSet));
+                    try {
+                        final UUID id = UUID.fromString(resultSet.getString("uuid"));
+                        retrievedData.add(createListing(id, resultSet));
+                    } catch (Exception e) {
+                        getLogger().log(Level.WARNING, "Failed to load listing (Data Corruption)!");
+                    }
                 }
                 return retrievedData;
             }
@@ -111,11 +118,11 @@ public abstract class CommonSQLListingDao implements Dao<Listing> {
     public void save(Listing listing) {
         try (Connection connection = getConnection()) {
             try (PreparedStatement statement = connection.prepareStatement("""
-                        INSERT INTO `listings`
-                        (`uuid`,`ownerUUID`,`ownerName`, `category`,
-                         `creationDate`, `deletionDate`, `price`, `tax`,
-                         `itemStack`, `biddable`, `bids`)
-                        VALUES (?,?,?,?,?,?,?,?,?,?,?);""")) {
+                    INSERT INTO `listings`
+                    (`uuid`,`ownerUUID`,`ownerName`, `category`,
+                     `creationDate`, `deletionDate`, `price`, `tax`,
+                     `itemStack`, `biddable`, `bids`)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?);""")) {
                 statement.setString(1, listing.getId().toString());
                 statement.setString(2, listing.getOwner().toString());
                 statement.setString(3, listing.getOwnerName());
@@ -173,8 +180,8 @@ public abstract class CommonSQLListingDao implements Dao<Listing> {
     public void delete(Listing listing) {
         try (Connection connection = getConnection()) {
             try (PreparedStatement statement = connection.prepareStatement("""
-                        DELETE FROM `listings`
-                        WHERE uuid = ?;""")) {
+                    DELETE FROM `listings`
+                    WHERE uuid = ?;""")) {
                 statement.setString(1, listing.getId().toString());
                 statement.execute();
             }
@@ -219,8 +226,7 @@ public abstract class CommonSQLListingDao implements Dao<Listing> {
                 tax,
                 creationDate,
                 deletionDate,
-                bids
-        );
+                bids);
     }
 
     protected Connection getConnection() throws SQLException {
