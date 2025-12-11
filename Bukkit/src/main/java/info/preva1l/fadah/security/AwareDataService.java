@@ -19,13 +19,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * A service for modifying data that is aware of updates from other servers and prevents desync.
+ * A service for modifying data that is aware of updates from other servers and
+ * prevents desync.
  * <p>
  * Created on 16/06/2025
  *
  * @author Preva1l
  */
-@Service
+@Service(priority = 10)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class AwareDataService {
     public static final AwareDataService instance = new AwareDataService();

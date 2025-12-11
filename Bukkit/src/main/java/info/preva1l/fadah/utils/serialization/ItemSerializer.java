@@ -12,6 +12,10 @@ public class ItemSerializer {
     }
 
     public static ItemStack deserialize(String source) {
-        return ItemStack.deserializeBytes(Base64.getDecoder().decode(source));
+        try {
+            return ItemStack.deserializeBytes(Base64.getDecoder().decode(source));
+        } catch (IllegalArgumentException e) {
+            return new ItemStack(org.bukkit.Material.AIR);
+        }
     }
 }
